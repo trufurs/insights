@@ -10,6 +10,7 @@ import {
 	MapChartConfig,
 	NumberChartConfig,
 	BubbleChartConfig,
+	SankeyChartConfig,
 } from '../../types/chart.types'
 import { Chart } from '../chart'
 import {
@@ -19,6 +20,7 @@ import {
 	getLineChartOptions,
 	getMapChartOptions,
 	getBubbleChartOptions,
+	getSankeyChartOptions,
 } from '../helpers'
 import { FIELDTYPES } from '../../helpers/constants.ts'
 import { titleCase } from '../../helpers'
@@ -61,6 +63,9 @@ const eChartOptions = computed(() => {
 	if (chart_type.value === 'Bubble') {
 		return getBubbleChartOptions(config.value as BubbleChartConfig, result.value)
 	}
+	if (chart_type.value === 'Sankey') {
+		return getSankeyChartOptions(config.value as SankeyChartConfig, result.value)
+	}
 })
 
 const showDrillDown = ref(false)
@@ -73,7 +78,7 @@ const locationColumn = computed(() => {
 	return result.value.columns.find(
 		(c) =>
 			FIELDTYPES.DIMENSION.includes(c.type) &&
-			c.name === mapConfig.value.location_column?.column_name
+			c.name === mapConfig.value.location_column?.column_name,
 	)
 })
 
@@ -114,7 +119,7 @@ const locationRowIndex = computed(() => {
 	return { index, reverseMap }
 })
 
-function handleMapChartClick(params:any) {
+function handleMapChartClick(params: any) {
 	if (!locationColumn.value) return null
 
 	const clickedLocation = params.name

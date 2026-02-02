@@ -11,6 +11,7 @@ import {
 	LineChartConfig,
 	MapChartConfig,
 	BubbleChartConfig,
+	SankeyChartConfig,
 	Series,
 	SeriesLine,
 	XAxis,
@@ -1135,6 +1136,108 @@ export function setDimensionNames(config: any) {
 		config.columns = config.columns.map(setDimensionName)
 	}
 	return config
+}
+
+export function getSankeyChartOptions(config: SankeyChartConfig, result: QueryResult) {
+	const rows = result.rows
+
+	const sourceColumnName = config.source_column.column_name || config.source_column.dimension_name
+	const targetColumnName = config.target_column.column_name || config.target_column.dimension_name
+	const valueColumnName = config.value_column.measure_name
+
+	if (!sourceColumnName || !targetColumnName || !valueColumnName) {
+		return null
+	}
+
+	const allNodes = new Set<string>()
+	const linkData = new Map<string, number>()
+
+	rows.forEach((row) => {
+		const source = String(row[sourceColumnName] || '')
+		const target = String(row[targetColumnName] || '')
+		const value = row[valueColumnName]
+
+		if (!source || !target) return
+
+		const key = `${source}→${target}`
+		linkData.set(key, (linkData.get(key) || 0) + value)
+		allNodes.add(source)
+		allNodes.add(target)
+	})
+
+	const colors = getColors()
+	const nodes = Array.from(allNodes).map((node, idx) => ({
+		name: node,
+		itemStyle: {
+			color: colors[idx % colors.length],
+		},
+	}))
+
+	const nodeColorMap = new Map(nodes.map((n, idx) => [n.name, colors[idx % colors.length]]))
+
+	const links = Array.from(linkData.entries()).map(([key, value]) => {
+		const [source, target] = key.split('→')
+		return {
+			source,
+			target,
+			value,
+		}
+	})
+
+	return {
+		animation: true,
+		animationDuration: 700,
+		color: colors,
+		tooltip: {
+			trigger: 'item',
+			triggerOn: 'mousemove',
+			confine: true,
+			appendToBody: false,
+			formatter: (params: any) => {
+				if (params.dataType === 'node') {
+					return `<div class="font-bold">${params.name}</div>`
+				}
+
+				const formattedValue = formatNumber(params.value)
+				return `
+					<div class="flex flex-col gap-1">
+						<div class="flex items-center justify-between gap-5">
+							<div>${params.data.source}</div>
+							<div class="font-bold">→</div>
+							<div>${params.data.target}</div>
+						</div>
+						<div class="flex items-center justify-between gap-5">
+							<div>Value:</div>
+							<div class="font-bold">${formattedValue}</div>
+						</div>
+					</div>
+				`
+			},
+		},
+		series: [
+			{
+				type: 'sankey',
+				coordinateSystem: 'none',
+				emphasis: {
+					focus: 'adjacency',
+				},
+				data: nodes,
+				links,
+				nodeGap: config.nodeGap || 8,
+				label: {
+					show: config.showLabels !== false,
+					position: 'right',
+					fontSize: 12,
+					color: (params: any) => nodeColorMap.get(params.name) || '#333',
+				},
+				lineStyle: {
+					color: 'source',
+					opacity: 0.7,
+					curveness: 0.5,
+				},
+			},
+		],
+	}
 }
 
 export function getGranularity(dimension_name: string, config: ChartConfig) {
