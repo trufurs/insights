@@ -149,6 +149,11 @@ export type SankeyChartConfig = {
 	value_column: Measure
 	nodeGap?: number
 	showLabels?: boolean
+	useGreyColor?: boolean
+	topPadding?: number
+	bottomPadding?: number
+	leftPadding?: number
+	rightPadding?: number
 }
 
 export type ChartConfig =

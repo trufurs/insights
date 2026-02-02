@@ -1184,6 +1184,17 @@ export function getSankeyChartOptions(config: SankeyChartConfig, result: QueryRe
 		}
 	})
 
+	const chartWidth = 800 // approximate chart width
+	const chartHeight = 600 // approximate chart height
+
+	const horizontalPadding = Math.max(chartWidth * 0.05, 24)
+	const verticalPadding = Math.max(chartHeight * 0.05, 24)
+
+	const top = config.topPadding ?? verticalPadding
+	const bottom = config.bottomPadding ?? verticalPadding
+	const right = config.rightPadding ?? horizontalPadding
+	const left = config.leftPadding ?? horizontalPadding
+
 	return {
 		animation: true,
 		animationDuration: 700,
@@ -1221,18 +1232,27 @@ export function getSankeyChartOptions(config: SankeyChartConfig, result: QueryRe
 				emphasis: {
 					focus: 'adjacency',
 				},
+				top,
+				bottom,
+				right,
+				left,
 				data: nodes,
 				links,
-				nodeGap: config.nodeGap || 8,
+				nodeGap: config.nodeGap ?? 12,
+				nodeWidth: 20,
 				label: {
 					show: config.showLabels !== false,
 					position: 'right',
 					fontSize: 12,
+					fontWeight: 400,
 					color: (params: any) => nodeColorMap.get(params.name) || '#333',
 				},
+				labelLayout: {
+					hideOverlap: true,
+				},
 				lineStyle: {
-					color: 'source',
-					opacity: 0.7,
+					color: config.useGreyColor ? '#81898e' : 'source',
+					opacity: 0.2,
 					curveness: 0.5,
 				},
 			},
