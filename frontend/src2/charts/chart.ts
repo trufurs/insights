@@ -25,6 +25,7 @@ import {
 	SankeyChartConfig,
 	TableChartConfig,
 } from '../types/chart.types'
+import { Dimension, Measure } from '../types/query.types'
 import { InsightsChartv3 } from '../types/workbook.types'
 import useWorkbook, { getLinkedQueries } from '../workbook/workbook'
 import { handleOldXAxisConfig, handleOldYAxisConfig, setDimensionNames } from './helpers'
@@ -202,22 +203,23 @@ function makeChart(name: string) {
 
 		if (chart.doc.chart_type === 'Sankey') {
 			const config = chart.doc.config as SankeyChartConfig
-			if (!config.source_column?.column_name) {
+			const hasPrimaryFlow =
+				config.source_column?.column_name &&
+				config.target_column?.column_name &&
+				config.value_column?.measure_name
+
+			const hasAdditionalFlows =
+				config.flows && config.flows.some(
+					f =>
+						f.source_column?.column_name &&
+						f.target_column?.column_name &&
+						f.value_column?.measure_name
+				)
+
+			if (!hasPrimaryFlow && !hasAdditionalFlows) {
 				messages.push({
 					variant: 'error',
-					message: 'Source column is required',
-				})
-			}
-			if (!config.target_column?.column_name) {
-				messages.push({
-					variant: 'error',
-					message: 'Target column is required',
-				})
-			}
-			if (!config.value_column?.measure_name) {
-				messages.push({
-					variant: 'error',
-					message: 'Value column is required',
+					message: 'At least one complete flow (source, target, value) is required',
 				})
 			}
 		}
@@ -380,9 +382,42 @@ function makeChart(name: string) {
 	function addSankeyChartOperation(query: Query) {
 		const config = chart.doc.config as SankeyChartConfig
 
+		const allFlows = [
+			{
+				source_column: config.source_column,
+				target_column: config.target_column,
+				value_column: config.value_column,
+			},
+			...(config.flows || []),
+		]
+
+		const dimensionsMap = new Map<string, Dimension>()
+		const measuresMap = new Map<string, Measure>()
+
+		const addDimensionFromFlowColumn = (
+			flowColumn: Dimension | undefined,
+			map: Map<string, Dimension>
+		) => {
+			const key = flowColumn?.column_name || flowColumn?.dimension_name
+			if (key && !map.has(key) && flowColumn) {
+				map.set(key, flowColumn)
+			}
+		}
+
+		allFlows.forEach(flow => {
+			addDimensionFromFlowColumn(flow.source_column, dimensionsMap)
+			addDimensionFromFlowColumn(flow.target_column, dimensionsMap)
+			if (flow.value_column?.measure_name) {
+				const key = flow.value_column.measure_name
+				if (key && !measuresMap.has(key)) {
+					measuresMap.set(key, flow.value_column)
+				}
+			}
+		})
+
 		query.addSummarize({
-			measures: [config.value_column],
-			dimensions: [config.source_column, config.target_column],
+			measures: Array.from(measuresMap.values()),
+			dimensions: Array.from(dimensionsMap.values()),
 		})
 	}
 

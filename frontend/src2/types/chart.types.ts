@@ -143,17 +143,26 @@ export type BubbleChartConfig = {
 	yAxis_refLine?: number
 }
 
+export type SankeyFlow = {
+	source_column: Dimension
+	target_column: Dimension
+	value_column: Measure
+}
+
 export type SankeyChartConfig = {
 	source_column: Dimension
 	target_column: Dimension
 	value_column: Measure
+	flows?: SankeyFlow[]
 	nodeGap?: number
 	showLabels?: boolean
+	showEdgeLabels?: boolean
 	useGreyColor?: boolean
 	topPadding?: number
 	bottomPadding?: number
 	leftPadding?: number
 	rightPadding?: number
+	selectedMode?: boolean | 'single' | 'multiple' | 'series'
 }
 
 export type ChartConfig =
