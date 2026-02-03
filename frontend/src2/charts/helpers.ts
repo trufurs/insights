@@ -11,6 +11,7 @@ import {
 	LineChartConfig,
 	MapChartConfig,
 	BubbleChartConfig,
+	SankeyChartConfig,
 	Series,
 	SeriesLine,
 	XAxis,
@@ -1135,6 +1136,154 @@ export function setDimensionNames(config: any) {
 		config.columns = config.columns.map(setDimensionName)
 	}
 	return config
+}
+
+export function getSankeyChartOptions(config: SankeyChartConfig, result: QueryResult) {
+	const rows = result.rows
+
+	const allFlows = [
+		{
+			source_column: config.source_column,
+			target_column: config.target_column,
+			value_column: config.value_column,
+		},
+		...(config.flows || []),
+	].filter(
+		f =>
+			(f.source_column?.column_name || f.source_column?.dimension_name) &&
+			(f.target_column?.column_name || f.target_column?.dimension_name) &&
+			f.value_column?.measure_name
+	)
+
+	if (allFlows.length === 0) {
+		return null
+	}
+
+	const allNodes = new Set<string>()
+	const linkData = new Map<string, number>()
+
+	// Process each flow
+	allFlows.forEach((flow) => {
+		const sourceColumnName = flow.source_column.column_name || flow.source_column.dimension_name
+		const targetColumnName = flow.target_column.column_name || flow.target_column.dimension_name
+		const valueColumnName = flow.value_column.measure_name
+
+		rows.forEach((row) => {
+			const source = String(row[sourceColumnName] || '')
+			const target = String(row[targetColumnName] || '')
+			const value = row[valueColumnName]
+
+			if (!source || !target || value === null || value === undefined) return
+
+			const numericValue = Number(value)
+			if (Number.isNaN(numericValue)) return
+
+			const key = `${source}→${target}`
+			linkData.set(key, (linkData.get(key) || 0) + numericValue)
+			allNodes.add(source)
+			allNodes.add(target)
+		})
+	})
+
+	const colors = getColors()
+	const nodes = Array.from(allNodes).map((node, idx) => ({
+		name: node,
+		itemStyle: {
+			color: colors[idx % colors.length],
+		},
+	}))
+
+	const nodeColorMap = new Map(nodes.map((n, idx) => [n.name, colors[idx % colors.length]]))
+
+	const links = Array.from(linkData.entries()).map(([key, value]) => {
+		const [source, target] = key.split('→')
+		return {
+			source,
+			target,
+			value,
+		}
+	})
+
+	const DEFAULT_PADDING = 24
+	const DEFAULT_NODE_GAP = 12
+
+	const getPadding = (value: number | string | undefined, defaultValue: number) => {
+		const parsed = Number(value)
+		return Number.isFinite(parsed) ? parsed : defaultValue
+	}
+
+	const top = getPadding(config.topPadding, DEFAULT_PADDING)
+	const bottom = getPadding(config.bottomPadding, DEFAULT_PADDING)
+	const right = getPadding(config.rightPadding, DEFAULT_PADDING)
+	const left = getPadding(config.leftPadding, DEFAULT_PADDING)
+	const nodeGap = Math.max(getPadding(config.nodeGap, DEFAULT_NODE_GAP), 0)
+
+	return {
+		animation: true,
+		animationDuration: 700,
+		color: colors,
+		tooltip: {
+			trigger: 'item',
+			triggerOn: 'mousemove',
+			confine: true,
+			appendToBody: false,
+			formatter: (params: any) => {
+				if (params.dataType === 'node') {
+					return `<div class="font-bold">${params.name}</div>`
+				}
+
+				const formattedValue = formatNumber(params.value)
+				return `
+					<div class="flex flex-col gap-1">
+						<div class="flex items-center justify-between gap-5">
+							<div>${params.data.source}</div>
+							<div class="font-bold">→</div>
+							<div>${params.data.target}</div>
+						</div>
+						<div class="flex items-center justify-between gap-5">
+							<div>Value:</div>
+							<div class="font-bold">${formattedValue}</div>
+						</div>
+					</div>
+				`
+			},
+		},
+		series: [
+			{
+				type: 'sankey',
+				coordinateSystem: 'none',
+				layout: 'none',
+				nodeGap,
+				nodeWidth: 20,
+				selectedMode: config.selectedMode ?? false,
+				emphasis: {
+					focus: 'adjacency',
+				},
+				top,
+				bottom,
+				right,
+				left,
+				data: nodes,
+				links,
+				label: {
+					show: config.showLabels !== false,
+					color: (params: any) => nodeColorMap.get(params.name) || '#333',
+					position: 'right',
+					fontSize: 12,
+					fontWeight: 'normal',
+				},
+				edgeLabel: { show: config.showEdgeLabels === true },
+				labelLayout: {
+					hideOverlap: true,
+				},
+				lineStyle: {
+					color: config.useGreyColor ? '#81898e' : 'source',
+					opacity: 0.2,
+					curveness: 0.5,
+				},
+			},
+		],
+	}
 }
 
 export function getGranularity(dimension_name: string, config: ChartConfig) {

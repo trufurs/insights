@@ -11,6 +11,7 @@ import {
 	Map,
 	ScatterChart,
 	Table2,
+	Workflow,
 } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { ChartType } from '../../types/chart.types'
@@ -38,6 +39,8 @@ const icon = computed(() => {
 			return Hash
 		case 'Map':
 			return Map
+		case 'Sankey':
+			return Workflow
 		default:
 			return BarChart3
 	}

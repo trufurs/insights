@@ -4,7 +4,7 @@ import { Dimension, Measure } from './query.types'
 export const AXIS_CHARTS = ['Bar', 'Line', 'Row']
 export type AxisChartType = (typeof AXIS_CHARTS)[number]
 
-export const CHARTS = ['Number', ...AXIS_CHARTS, 'Donut', 'Funnel', 'Table', 'Map', 'Bubble']
+export const CHARTS = ['Number', ...AXIS_CHARTS, 'Donut', 'Funnel', 'Table', 'Map', 'Bubble', 'Sankey']
 export type ChartType = (typeof CHARTS)[number]
 
 export type AxisChartConfig = {
@@ -143,6 +143,28 @@ export type BubbleChartConfig = {
 	yAxis_refLine?: number
 }
 
+export type SankeyFlow = {
+	source_column: Dimension
+	target_column: Dimension
+	value_column: Measure
+}
+
+export type SankeyChartConfig = {
+	source_column: Dimension
+	target_column: Dimension
+	value_column: Measure
+	flows?: SankeyFlow[]
+	nodeGap?: number
+	showLabels?: boolean
+	showEdgeLabels?: boolean
+	useGreyColor?: boolean
+	topPadding?: number
+	bottomPadding?: number
+	leftPadding?: number
+	rightPadding?: number
+	selectedMode?: boolean | 'single' | 'multiple' | 'series'
+}
+
 export type ChartConfig =
 	| LineChartConfig
 	| BarChartConfig
@@ -152,6 +174,7 @@ export type ChartConfig =
 	| FunnelChartConfig
 	| MapChartConfig
 	| BubbleChartConfig
+	| SankeyChartConfig
 
 export interface Suggestion {
 		region: string
